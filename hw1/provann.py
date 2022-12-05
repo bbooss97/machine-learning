@@ -4,6 +4,7 @@ from sklearn.metrics import f1_score
 from sklearn.metrics import precision_score
 from sklearn.metrics import recall_score
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import mean_squared_error
 from sklearn.metrics import ConfusionMatrixDisplay, confusion_matrix
 from sklearn.preprocessing import MinMaxScaler, StandardScaler
 from sklearn.model_selection import GridSearchCV
@@ -13,6 +14,8 @@ import random
 import warnings
 import torch
 from torch.utils.data import Dataset, DataLoader
+import shutup
+shutup.please()
 
 #default tensor type
 # torch.set_default_tensor_type(torch.FloatTensor)
@@ -71,118 +74,115 @@ class Net(nn.Module):
         super(Net, self).__init__()
         self.m = nn.Dropout(p=0.5)
         self.fc1 = nn.Linear(35, 100)
-        self.fc2 = nn.Linear(100, 50)
-        self.fc21 = nn.Linear(50, 50)
-        self.fc22 = nn.Linear(50, 50)
-        self.fc23 = nn.Linear(50, 50)
-        self.fc231 = nn.Linear(50, 50)
-        self.fc232 = nn.Linear(50, 50)
-        self.fc233 = nn.Linear(50, 50)
-        self.fc234 = nn.Linear(50, 50)
-        self.fc235 = nn.Linear(50, 50)
-        self.fc3 = nn.Linear(50, 5)
+        self.fc3 = nn.Linear(100, 5)
+
+        self.f1 = nn.Linear(35, 100)
+        l=[]
+        for i in range(3):
+            l.append(nn.Linear(100, 100))
+            l.append(nn.ReLU())
+        self.f2= nn.Sequential(*l)
+        self.f3 = nn.Linear(100, 1)
     def forward(self, x):
-        x = torch.relu(self.fc1(x))
-        x = torch.relu(self.fc2(x))
-        x = self.m(x)
-        x = torch.relu(self.fc21(x))
-        x = torch.relu(self.fc22(x))
-        x = self.m(x)
-        x = torch.relu(self.fc23(x))
-        x = torch.relu(self.fc231(x))
-        x = self.m(x)
-        x = torch.relu(self.fc232(x))
-        x = torch.relu(self.fc233(x))
-        x = torch.relu(self.fc234(x))
-        x = torch.sigmoid(self.fc235(x))
-        x =  F.softmax(self.fc3(x), dim=1)
-        return x
+        a = torch.relu(self.fc1(x))
+        a = F.softmax(self.fc3(a))
+
+        b = torch.relu(self.f1(x))
+        b = self.f2(b)
+        b = self.f3(b)
+
+        return a, b
 
 net = Net()
 net.cuda()
 print(net)
 
-criterion = nn.CrossEntropyLoss()
+class_criterion = nn.CrossEntropyLoss()
+reg_criterion = nn.MSELoss()
+
 optimizer = optim.Adam(net.parameters())
 massimo=0
-for epoch in range(10000):  # loop over the dataset multiple times
+minLoss=1000000000000000
+for epoch in range(100000):  # loop over the dataset multiple times
     running_loss = 0.0
-    print(epoch)
+    # print(epoch)
     for i, data in enumerate(train_loader, 0):
         # get the inputs; data is a list of [inputs, labels]
         inputs, labels = data
         inputs=inputs.to('cuda')
         labels=labels.to('cuda')
-        labels=labels[:,0]
         # zero the parameter gradients
         optimizer.zero_grad()
         # forward + backward + optimize
         outputs = net(inputs)
         #one hot encoding
-        labels=labels.long()
+        labels[:,0]=labels[:,0].type(torch.int32)
         cmp=torch.zeros(labels.shape[0],5)
         for i in range(labels.shape[0]):
-            cmp[i,labels[i]]=1
+            cmp[i,int(labels[i][0])]=1
         cmp=cmp.to('cuda')
 
 
-        loss = criterion(outputs, cmp)
+        # loss = class_criterion(outputs[0], cmp)+ reg_criterion(outputs[1], labels[:,1])
+        loss =  reg_criterion(outputs[1], labels[:,1])
+
         loss.backward()
         optimizer.step()
+        if loss.item()<minLoss:
+            minLoss=loss.item()
         # print statistics
-        running_loss += loss.item()
-        if i % 100 == 99:    # print every 2000 mini-batches
-            print('[%d, %5d] loss: %.3f' %
-                  (epoch + 1, i + 1, running_loss / 100))
-            running_loss = 0.0
+    if epoch%100==0:
 
-    with torch.no_grad():
-        predicted=net(x_test)
-        predicted=torch.argmax(predicted, dim=1)
-        x_test=x_test.cpu()
-        y_test=y_test.cpu()
-        predicted=predicted.cpu()
-        f1_micro=f1_score(y_test[:,0], predicted, average='micro')
-        f1_macro=f1_score(y_test[:,0], predicted, average='macro')
-        if f1_micro>massimo:
-            massimo=f1_micro
-
-        print(f"massimo f1 score {massimo} ,     current {f1_micro}" )
-        x_test=x_test.to('cuda')
-        y_test=y_test.to('cuda')
+        # print(f"minLoss:{minLoss} loss: {loss.item()}")
+    
+        with torch.no_grad():
+            predicted=net(x_test)
+            x_test=x_test.cpu()
+            y_test=y_test.cpu()
+            classification=torch.argmax(predicted[0], dim=1)
+            regression=predicted[1]
+            classification=classification.to('cpu')
+            regression=regression.to('cpu')
+            f1_micro=f1_score(y_test[:,0], classification, average='micro')
+            f1_macro=f1_score(y_test[:,0], classification, average='macro')
+            f1_weighted=f1_score(y_test[:,0], classification, average='weighted')
+            mse=mean_squared_error(y_test[:,1], regression)
+            print(f"epoch: {epoch} min: {minLoss} loss: {loss.item()} f1_micro: {f1_micro} f1_macro: {f1_macro} f1_weighted: {f1_weighted} mse: {mse}")
+            x_test=x_test.to('cuda')
+            y_test=y_test.to('cuda')
 
 print('Finished Training')
-x_train=x_train.to('cpu')
-y_train=y_train.to('cpu')
-x_test=x_test.to('cpu')
-y_test=y_test.to('cpu')
-net=net.to('cpu')
-with torch.no_grad():
-    predicted=net(torch.tensor(x_train))
-    predicted=torch.argmax(predicted, dim=1)
-    print("train")
-    print(f"the accuracy is {accuracy_score(y_train[:,0], predicted)}")
-    print(f"the f1 score is {f1_score(y_train[:,0], predicted, average='macro')}")
-    print(f"the precision score is {precision_score(y_train[:,0], predicted, average='macro')}")
-    print(f"the recall score is {recall_score(y_train[:,0], predicted, average='macro')}")
-    print(f"the confusion matrix is \n{confusion_matrix(y_train[:,0], predicted)}")
+# x_train=x_train.to('cpu')
+# y_train=y_train.to('cpu')
+# x_test=x_test.to('cpu')
+# y_test=y_test.to('cpu')
+# net=net.to('cpu')
+# with torch.no_grad():
+#     predicted=net(torch.tensor(x_train))
+#     predicted=torch.argmax(predicted, dim=1)
+#     print("train")
+#     print(f"the accuracy is {accuracy_score(y_train[:,0], predicted)}")
+#     print(f"the f1 score is {f1_score(y_train[:,0], predicted, average='macro')}")
+#     print(f"the precision score is {precision_score(y_train[:,0], predicted, average='macro')}")
+#     print(f"the recall score is {recall_score(y_train[:,0], predicted, average='macro')}")
+#     print(f"the confusion matrix is \n{confusion_matrix(y_train[:,0], predicted)}")
 
 
 
 
 
 
-    predicted=net(torch.tensor(x_test))
-    predicted=torch.argmax(predicted, dim=1)
-    print("test")
-    print(f"the accuracy is {accuracy_score(y_test[:,0], predicted)}")
-    print(f"the f1 score is {f1_score(y_test[:,0], predicted, average='macro')}")
-    print(f"the precision score is {precision_score(y_test[:,0], predicted, average='macro')}")
-    print(f"the recall score is {recall_score(y_test[:,0], predicted, average='macro')}")
-    print(f"the confusion matrix is \n{confusion_matrix(y_test[:,0], predicted)}")
+#     predicted=net(torch.tensor(x_test))
+#     predicted=torch.argmax(predicted, dim=1)
+#     print("test")
+#     print(f"the accuracy is {accuracy_score(y_test[:,0], predicted)}")
+#     print(f"the f1 score is {f1_score(y_test[:,0], predicted, average='macro')}")
+#     print(f"the precision score is {precision_score(y_test[:,0], predicted, average='macro')}")
+#     print(f"the recall score is {recall_score(y_test[:,0], predicted, average='macro')}")
+#     print(f"the confusion matrix is \n{confusion_matrix(y_test[:,0], predicted)}")
 
 
-print(massimo)
+# print(massimo)
 
 
 
