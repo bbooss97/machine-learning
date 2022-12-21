@@ -33,7 +33,7 @@ for epoch in range(num_epochs):
     model.train()
     for i, (images, labels) in enumerate(train_dataloader):
         #reshape the images
-        images=images.reshape()
+        # images=images.reshape()
         
         #forward pass
         outputs=model(images)

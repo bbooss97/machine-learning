@@ -24,7 +24,7 @@ class OnePieceDataset(Dataset):
         label[int(item[-1].strip())]=1
         
         #load the image as pil image
-        image=Image.open(" ".join(item[0:-1]))
+        image=Image.open(" ".join(item[0:-1])).convert('RGB')
         image = image.resize((self.w, self.h)) 
 
         #convert it to a tensor
