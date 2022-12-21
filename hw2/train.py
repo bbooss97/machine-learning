@@ -8,9 +8,10 @@ from nn import Mlp
 num_epochs=10
 batch_size=32
 lr=0.001
+w,h=400,400
 
 #read the dataset
-dataset=OnePieceDataset(400,400)
+dataset=OnePieceDataset(w,h)
 
 #split in train and test set
 split=[int(0.8*len(dataset)),int(0.2*len(dataset))+1]
@@ -21,7 +22,7 @@ train_dataloader = DataLoader(train, batch_size=batch_size, shuffle=True)
 test_dataloader = DataLoader(test, batch_size=batch_size, shuffle=True)
 
 #define the model
-model=Mlp()
+model=Mlp(w,h)
 
 #define loss and the optimizer
 loss=nn.CrossEntropyLoss()
@@ -33,7 +34,7 @@ for epoch in range(num_epochs):
     model.train()
     for i, (images, labels) in enumerate(train_dataloader):
         #reshape the images
-        # images=images.reshape()
+        images=images.reshape(batch_size,-1)
         
         #forward pass
         outputs=model(images)
