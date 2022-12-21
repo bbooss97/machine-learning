@@ -6,7 +6,9 @@ import numpy as np
 
 class OnePieceDataset(Dataset):
     items=[]
-    def __init__(self):
+    def __init__(self,w,h):
+        self.w=w
+        self.h=h
         with open("./hw2/annotations.txt", "r") as f:
             for line in f.readlines():
                 self.items.append(line.split(" "))
@@ -19,10 +21,11 @@ class OnePieceDataset(Dataset):
 
         #one hot encoding of the class of the item
         label=torch.zeros(len(classes))
-        label[int(item[1].strip())]=1
+        label[int(item[-1].strip())]=1
         
         #load the image as pil image
-        image=Image.open(item[0])
+        image=Image.open(" ".join(item[0:-1]))
+        image = image.resize((self.w, self.h)) 
 
         #convert it to a tensor
         image=torch.tensor(np.array(image))
