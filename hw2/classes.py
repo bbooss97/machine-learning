@@ -18,5 +18,5 @@ classnames=[
 "Usopp",
 "Zoro"]
 
-classes={i:name for i, name in enumerate(classnames)}
+classes={name:i for i, name in enumerate(classnames)}
 
