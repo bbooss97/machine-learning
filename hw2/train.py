@@ -3,20 +3,22 @@ from dataset import OnePieceDataset
 from torch.utils.data import DataLoader
 from torch import nn
 from nn import Mlp
-# import wandb
+import torchvision
+import wandb
 
 #device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 #declare parameters
-num_epochs=2
+num_epochs=5
 batch_size=32
-w,h=400,400
-w_and_b=True
+w,h=50,50
+w_and_b=False
+nn_type="mlp"
 
-# type="mobilenetPretrainedFineTuneAll"
-# wandb.init(project='visionAndPerceptionProject', entity='bbooss97',name=type)
+if w_and_b:
+    wandb.init(project='hw2ml', entity='bbooss97',name=nn_type)
 
 #read the dataset
 dataset=OnePieceDataset(w,h)
@@ -29,14 +31,36 @@ train,test = torch.utils.data.random_split(dataset,split)
 train_dataloader = DataLoader(train, batch_size=batch_size, shuffle=True , drop_last=True)
 test_dataloader = DataLoader(test, batch_size=batch_size, shuffle=True , drop_last=True)
 
+#types where have to change the input in the train and test
+typesToChange=["resnetFrom0","resnetPretrainedFineTuneFc","resnetPretrainedFineTuneAll","mobilenetPretrainedFineTuneAll"]
+
 #define the model
-model=Mlp(w,h)
+if nn_type=="mlp":
+    model=Mlp(w,h)
+elif nn_type=="resnetPretrainedFineTuneFc":
+    model=torch.hub.load('pytorch/vision:v0.6.0', 'resnet18', pretrained=True)
+    model.fc=torch.nn.Linear(512,18)
+    toFreeze=[j for i,j in model.named_parameters()][:-2]
+    for i in toFreeze:
+        i.requires_grad=False
+elif nn_type=="resnetPretrainedFineTuneAll":
+    model=torch.hub.load('pytorch/vision:v0.6.0', 'resnet18', pretrained=True)
+    model.fc=torch.nn.Linear(512,18)
+elif nn_type=="resnetFrom0":
+    model=torch.hub.load('pytorch/vision:v0.6.0', 'resnet18',pretrained=False)
+    model.fc=torch.nn.Linear(512,18)
+elif nn_type=="mobilenetPretrainedFineTuneAll":
+    model=torchvision.models.mobilenet_v3_small()
+    model.classifier[3]=torch.nn.Linear(1024,18)
+
+if w_and_b:
+    wandb.watch(model)
+
 model.to(device)
 
 #define loss and the optimizer
 loss=nn.CrossEntropyLoss()
 optimizer=torch.optim.Adam(model.parameters())
-
 
 for epoch in range(num_epochs):
 
@@ -51,7 +75,11 @@ for epoch in range(num_epochs):
 
         #reshape the images
         images=images.reshape(batch_size,-1)
-        
+
+        #change the type of the input
+        if nn_type in typesToChange:
+            images =images.reshape(batch_size,50,50,3)
+            images=torch.einsum("abcd->adbc",images)
         #forward pass
         outputs=model(images)
         
@@ -65,7 +93,8 @@ for epoch in range(num_epochs):
         
         #print the loss
         print("epoch: {}/{}, step: {}/{}, loss: {}".format(epoch+1,num_epochs,i+1,len(train_dataloader),l.item()))
-        # wandb.log({"epoch_train":epoch,"iteration_train":it,"loss_train":loss.data.mean(),"accuracy_train":accuracy})
+        if w_and_b:
+            wandb.log({"epoch_train":epoch,"iteration_train":it,"loss_train":loss.data.mean(),"accuracy_train":accuracy})
         
     #test
     model.eval()
@@ -86,6 +115,11 @@ for epoch in range(num_epochs):
             # Reshape the images
             images=images.reshape(batch_size,-1)
 
+            #change the input for those models
+            if nn_Type in typesToChange:
+                images =images.reshape(batch_size,50,50,3)
+                images=torch.einsum("abcd->adbc",images)
+
             # Forward pass: compute predictions and loss
             outputs = model(images)
             ls = loss(outputs, labels)
@@ -101,6 +135,9 @@ for epoch in range(num_epochs):
     # Print the metrics
     print(f'Test loss: {avg_loss:.4f}')
     print(f'Test accuracy: {avg_accuracy:.4f}')
-    # wandb.log({"epoch_train":epoch,"iteration_train":it,"loss_train":loss.data.mean(),"accuracy_train":accuracy})
+    if w_and_b:
+        wandb.log({"epoch_train":epoch,"iteration_train":it,"loss_train":loss.data.mean(),"accuracy_train":accuracy})
 
+#save the model
+torch.save(model,"./hw2/models/"+nn_type+".pt")
 print("finished")
