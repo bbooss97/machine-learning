@@ -22,8 +22,8 @@ split=[int(0.8*len(dataset)),int(0.2*len(dataset))+1]
 train,test = torch.utils.data.random_split(dataset,split)
 
 #dataloader
-train_dataloader = DataLoader(train, batch_size=batch_size, shuffle=True)
-test_dataloader = DataLoader(test, batch_size=batch_size, shuffle=True)
+train_dataloader = DataLoader(train, batch_size=batch_size, shuffle=True , drop_last=True)
+test_dataloader = DataLoader(test, batch_size=batch_size, shuffle=True , drop_last=True)
 
 #define the model
 model=Mlp(w,h)
