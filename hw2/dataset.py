@@ -28,6 +28,6 @@ class OnePieceDataset(Dataset):
         image = image.resize((self.w, self.h)) 
 
         #convert it to a tensor
-        image=torch.tensor(np.array(image))
+        image=torch.tensor(np.array(image),dtype=torch.float32)
         
         return image, label

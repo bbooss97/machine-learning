@@ -5,7 +5,7 @@ from torch import nn
 from nn import Mlp
 
 #declare parameters
-num_epochs=10
+num_epochs=2
 batch_size=32
 lr=0.001
 w,h=400,400
@@ -30,9 +30,12 @@ optimizer=torch.optim.Adam(model.parameters(),lr=lr)
 
 
 for epoch in range(num_epochs):
+
     #train
     model.train()
+
     for i, (images, labels) in enumerate(train_dataloader):
+
         #reshape the images
         images=images.reshape(batch_size,-1)
         
@@ -52,13 +55,28 @@ for epoch in range(num_epochs):
         
     #test
     model.eval()
+
+    # Initialize variables to store metrics
+    loss = 0.0
+    accuracy = 0.0
+
+    # Loop over the data in the test set
     with torch.no_grad():
-        correct=0
-        total=0
         for images, labels in test_dataloader:
-            #reshape the images
-            images=images.reshape(-1,28*28)
-            
-            #forward pass
+            # Forward pass: compute predictions and loss
+            outputs = model(images)
+            loss = criterion(outputs, labels)
+
+            # Compute running metrics
+            loss += loss.item()
+            accuracy += (outputs.argmax(dim=1) == labels).float().mean().item()
+
+    # Compute average metrics
+    avg_loss = loss / len(test_dataloader)
+    avg_accuracy = accuracy / len(test_dataloader)
+
+    # Print the metrics
+    print(f'Test loss: {avg_loss:.4f}')
+    print(f'Test accuracy: {avg_accuracy:.4f}')
 
 print("finished")
