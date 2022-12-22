@@ -3,6 +3,7 @@ from dataset import OnePieceDataset
 from torch.utils.data import DataLoader
 from torch import nn
 from nn import Mlp
+# import wandb
 
 #device
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
@@ -13,6 +14,10 @@ num_epochs=2
 batch_size=32
 lr=0.001
 w,h=400,400
+w_and_b=True
+
+# type="mobilenetPretrainedFineTuneAll"
+# wandb.init(project='visionAndPerceptionProject', entity='bbooss97',name=type)
 
 #read the dataset
 dataset=OnePieceDataset(w,h)
@@ -61,12 +66,14 @@ for epoch in range(num_epochs):
         
         #print the loss
         print("epoch: {}/{}, step: {}/{}, loss: {}".format(epoch+1,num_epochs,i+1,len(train_dataloader),l.item()))
+        # wandb.log({"epoch_train":epoch,"iteration_train":it,"loss_train":loss.data.mean(),"accuracy_train":accuracy})
         
     #test
     model.eval()
+    # wandb.watch(model)
 
     # Initialize variables to store metrics
-    loss = 0.0
+    l = 0.0
     accuracy = 0.0
 
     # Loop over the data in the test set
@@ -82,18 +89,19 @@ for epoch in range(num_epochs):
 
             # Forward pass: compute predictions and loss
             outputs = model(images)
-            loss = criterion(outputs, labels)
+            l = loss(outputs, labels)
 
             # Compute running metrics
-            loss += loss.item()
-            accuracy += (outputs.argmax(dim=1) == labels).float().mean().item()
+            l += l.item()
+            accuracy += (outputs.argmax(dim=1) == labels.argmax(dim=1)).float().mean().item()
 
     # Compute average metrics
-    avg_loss = loss / len(test_dataloader)
+    avg_loss = l / len(test_dataloader)
     avg_accuracy = accuracy / len(test_dataloader)
 
     # Print the metrics
     print(f'Test loss: {avg_loss:.4f}')
     print(f'Test accuracy: {avg_accuracy:.4f}')
+    # wandb.log({"epoch_train":epoch,"iteration_train":it,"loss_train":loss.data.mean(),"accuracy_train":accuracy})
 
 print("finished")
