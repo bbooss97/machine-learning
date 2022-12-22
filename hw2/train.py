@@ -98,7 +98,8 @@ for epoch in range(num_epochs):
         #print the loss
         print("epoch: {}/{}, step: {}/{}, loss: {}".format(epoch+1,num_epochs,i+1,len(train_dataloader),l.item()))
         if w_and_b:
-            wandb.log({"loss_train":l.item()})
+            if i%20==0:
+                wandb.log({"loss_train":l.item()})
         
     #test
     model.eval()
