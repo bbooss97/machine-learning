@@ -14,7 +14,7 @@ print(device)
 num_epochs=5
 batch_size=32
 w,h=50,50
-w_and_b=False
+w_and_b=True
 nn_type="mlp"
 
 if w_and_b:
@@ -66,7 +66,10 @@ for epoch in range(num_epochs):
 
     #train
     model.train()
+    if w_and_b:
+        wandb.log({"epoch":epoch})
 
+    #train loop
     for i, (images, labels) in enumerate(train_dataloader):
 
         #move the data to the device
@@ -80,6 +83,7 @@ for epoch in range(num_epochs):
         if nn_type in typesToChange:
             images =images.reshape(batch_size,50,50,3)
             images=torch.einsum("abcd->adbc",images)
+
         #forward pass
         outputs=model(images)
         
@@ -94,7 +98,7 @@ for epoch in range(num_epochs):
         #print the loss
         print("epoch: {}/{}, step: {}/{}, loss: {}".format(epoch+1,num_epochs,i+1,len(train_dataloader),l.item()))
         if w_and_b:
-            wandb.log({"epoch_train":epoch,"iteration_train":it,"loss_train":loss.data.mean(),"accuracy_train":accuracy})
+            wandb.log({"loss_train":l.item()})
         
     #test
     model.eval()
@@ -106,7 +110,7 @@ for epoch in range(num_epochs):
 
     # Loop over the data in the test set
     with torch.no_grad():
-        for images, labels in test_dataloader:
+        for i,(images, labels) in enumerate(test_dataloader):
 
             # Move the data to the device
             images = images.to(device)
@@ -136,8 +140,12 @@ for epoch in range(num_epochs):
     print(f'Test loss: {avg_loss:.4f}')
     print(f'Test accuracy: {avg_accuracy:.4f}')
     if w_and_b:
-        wandb.log({"epoch_train":epoch,"iteration_train":it,"loss_train":loss.data.mean(),"accuracy_train":accuracy})
+        wandb.log({"avg_loss_test":avg_loss,"avg_accuracy_test":avg_accuracy})
 
 #save the model
 torch.save(model,"./hw2/models/"+nn_type+".pt")
+
+if w_and_b:
+    wandb.finish()
+
 print("finished")
