@@ -4,6 +4,10 @@ from torch.utils.data import DataLoader
 from torch import nn
 from nn import Mlp
 
+#device
+device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+print(device)
+
 #declare parameters
 num_epochs=2
 batch_size=32
@@ -23,6 +27,7 @@ test_dataloader = DataLoader(test, batch_size=batch_size, shuffle=True)
 
 #define the model
 model=Mlp(w,h)
+model.to(device)
 
 #define loss and the optimizer
 loss=nn.CrossEntropyLoss()
@@ -35,6 +40,10 @@ for epoch in range(num_epochs):
     model.train()
 
     for i, (images, labels) in enumerate(train_dataloader):
+
+        #move the data to the device
+        images=images.to(device)
+        labels=labels.to(device)
 
         #reshape the images
         images=images.reshape(batch_size,-1)
@@ -63,6 +72,14 @@ for epoch in range(num_epochs):
     # Loop over the data in the test set
     with torch.no_grad():
         for images, labels in test_dataloader:
+
+            # Move the data to the device
+            images = images.to(device)
+            labels = labels.to(device)
+
+            # Reshape the images
+            images=images.reshape(batch_size,-1)
+
             # Forward pass: compute predictions and loss
             outputs = model(images)
             loss = criterion(outputs, labels)
