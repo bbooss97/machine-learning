@@ -121,7 +121,7 @@ for epoch in range(num_epochs):
             images=images.reshape(batch_size,-1)
 
             #change the input for those models
-            if nn_Type in typesToChange:
+            if nn_type in typesToChange:
                 images =images.reshape(batch_size,50,50,3)
                 images=torch.einsum("abcd->adbc",images)
 
