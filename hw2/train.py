@@ -89,10 +89,10 @@ for epoch in range(num_epochs):
 
             # Forward pass: compute predictions and loss
             outputs = model(images)
-            l = loss(outputs, labels)
+            ls = loss(outputs, labels)
 
             # Compute running metrics
-            l += l.item()
+            l += ls.item()
             accuracy += (outputs.argmax(dim=1) == labels.argmax(dim=1)).float().mean().item()
 
     # Compute average metrics
