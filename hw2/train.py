@@ -12,7 +12,6 @@ print(device)
 #declare parameters
 num_epochs=2
 batch_size=32
-lr=0.001
 w,h=400,400
 w_and_b=True
 
@@ -36,7 +35,7 @@ model.to(device)
 
 #define loss and the optimizer
 loss=nn.CrossEntropyLoss()
-optimizer=torch.optim.Adam(model.parameters(),lr=lr)
+optimizer=torch.optim.Adam(model.parameters())
 
 
 for epoch in range(num_epochs):
