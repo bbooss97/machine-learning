@@ -11,11 +11,11 @@ device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 print(device)
 
 #declare parameters
-num_epochs=5
+num_epochs=20
 batch_size=32
 w,h=50,50
 w_and_b=True
-nn_type="mlp"
+nn_type="resnetPretrainedFineTuneAll"
 
 if w_and_b:
     wandb.init(project='hw2ml', entity='bbooss97',name=nn_type)
