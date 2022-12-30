@@ -143,8 +143,8 @@ for epoch in range(num_epochs):
     if w_and_b:
         wandb.log({"avg_loss_test":avg_loss,"avg_accuracy_test":avg_accuracy})
 
-#save the model
-torch.save(model,"./hw2/models/"+nn_type+".pt")
+    #save the model
+    torch.save(model,"./hw2/models/"+nn_type+".pt")
 
 if w_and_b:
     wandb.finish()
